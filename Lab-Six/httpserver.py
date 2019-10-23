@@ -68,9 +68,12 @@ def handle_request(request_socket):
     Request_Line = Get_Request_Line(request_socket)
     Request_Headers = Get_Request_Headers(request_socket)
 
+    # prints out the request line and headers received.
+    Print_Request_Details(Request_Line, Request_Headers)
+
     if Request_Line[0] == 'GET':
         # Handle GET Requests Here
-        Response_Headers = {}
+        Response_Headers = Get_Response_Headers(Request_Line[1])
 
     elif Request_Line[0] == 'PUT':
         # Handle PUT Requests Here
@@ -79,6 +82,19 @@ def handle_request(request_socket):
     else:
         # Handle POST Requests Here
         Response_Headers = {}
+
+
+def Print_Request_Details(Request_Line, Request_Headers):
+    for value in Request_Line:
+        print(value)
+        print(b'\t')
+
+    print(b'\r\n')
+    for key in Request_Headers:
+        print(key)
+        print(' ')
+        print(Request_Headers[key])
+        print(b'\r\n')
 
 
 def Get_Request_Line(request_socket):
@@ -120,6 +136,7 @@ def Add_Response_Header(header_dictionary, header_name, header_value):
 
     header_dictionary[header_name] = header_value
     return header_dictionary
+
 
 def Encode_Response_Headers(header_dictionary):
     """
@@ -200,7 +217,51 @@ def Get_Header_Value(rawHeader):
     return headerString[headerString.find(' '):len(headerString)]
 
 
-def find_resource(filename, path):
+def Get_Response_Headers(resource):
+    """
+    Creates a dictionary of the response headers.
+    :authors: Leah and Sam
+    :return:
+    """
+    header_dictionary = {}
+    header_dictionary = Add_Response_Header(header_dictionary, 'Date:', Get_Date())
+    header_dictionary = Add_Response_Header(header_dictionary, 'MIME:', get_mime_type(resource))
+    header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', get_file_size(resource))
+
+    return header_dictionary
+
+
+def Get_Date():
+    """
+    Creates a date header to indicate when the request was satisfied to add to
+    the dictionary.
+    :author: Leah
+    :return: timestamp: A String of the time when the request was satisfied
+    """
+    timestamp = datetime.datetime.utcnow()
+    return timestamp.strftime('%a, %d %b %Y %H:%M:%S GMT')
+
+
+def Create_Response_Line():
+    """
+    Creates the status line for the HTTP response.
+    :author: Leah
+    :return: status line: A bytes object of the status line
+    """
+    status_line = b''
+    version = 'HTTP/1.1 '
+    version = version.encode()
+    if Find_Resource():
+        status_code = '200 ok '
+        status_code = status_code.encode()
+    else:
+        status_code = '400 not found '
+        status_code = status_code.encode()
+    status_line = version + status_code + b'\x0d\x0a'
+    return status_line
+
+
+def Find_Resource(filename, path):
     """
     finds a file in the local server via given name and path
     if the file is found, return 200 file found
@@ -214,12 +275,12 @@ def find_resource(filename, path):
     """
     for root, dirs, files in os.walk(path):
         if filename in files:
-            store_body(filename)
+            Store_Body(filename)
             return 200
     return 404
 
 
-def store_body(file_name):
+def Store_Body(file_name):
     """
     This method stores the contents of a file to a string to return in the header
     :param filename: name of the file to open and read
@@ -229,8 +290,7 @@ def store_body(file_name):
     :author: Joe Bunales
     """
 
-    body = dict
-    {}
+    body = dict{}
     with open(file_name, 'r') as contents:
         for line in contents:
             key, value = line.split()
