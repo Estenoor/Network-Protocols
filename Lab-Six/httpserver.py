@@ -9,13 +9,12 @@ A simple HTTP server
 
 import socket
 import re
+import sys
 import threading
 import os
 import mimetypes
 import datetime
 
-# dictionary to hold all of the headers to be sent in a response.
-responseHeaderDictionary = {};
 
 def main():
     """ Start the server """
@@ -25,7 +24,7 @@ def main():
 def http_server_setup(port):
     """
     Start the HTTP server
-    - Open the listening socket
+    - Open the listening Client_Socket
     - Accept connections and spawn processes to handle requests
 
     :param port: listening port number
@@ -57,23 +56,40 @@ def handle_request(request_socket):
     """
     Handle a single HTTP request, running on a newly started thread.
 
-    Closes request socket after sending response.
+    Closes request Client_Socket after sending response.
 
     Should include a response header indicating NO persistent connection
 
-    :param request_socket: socket representing TCP connection from the HTTP client_socket
+    :param request_socket: Client_Socket representing TCP connection from the HTTP client_socket
     :return: None
     """
+    print(request_socket.revc(1000))
+
+    print('Request Found')
 
     Request_Line = Get_Request_Line(request_socket)
+
     Request_Headers = Get_Request_Headers(request_socket)
 
     # prints out the request line and headers received.
     Print_Request_Details(Request_Line, Request_Headers)
 
+    if Request_Headers[2] != 'HTTP/1.1':
+        Message = Assemble_Message(Resource_Status=400, Resource_Name='')
+        request_socket.sendall(Message)
+
     if Request_Line[0] == 'GET':
+        if Request_Headers[1] == '/':
+            Request_Headers[1] = '/index.html'
+
         # Handle GET Requests Here
-        Response_Headers = Get_Response_Headers(Request_Line[1])
+        if Resource_Exists(Request_Line[1]):  # If the Resource Exists
+            Message = Assemble_Message(Resource_Status=200, Resource_Name=Request_Line[1])
+            request_socket.sendall(Message)
+
+        else:  # If the Resource Doesn't Exist
+            Message = Assemble_Message(Resource_Status=404, Resource_Name=Request_Line[1])
+            request_socket.sendall(Message)
 
     elif Request_Line[0] == 'PUT':
         # Handle PUT Requests Here
@@ -84,10 +100,34 @@ def handle_request(request_socket):
         Response_Headers = {}
 
 
+def Assemble_Message(Resource_Status, Resource_Name):
+    """
+    Assembles the Message to be sent from the server to the client
+    :author: Sam
+    :param Resource_Status:  Status to be sent across
+    :param Resource_Name:    Name of resource to be sent across
+    :return: Bytes object of the whole
+    """
+    Response_Line = Get_Response_Line(Resource_Status)  # Gets Response Line
+    Response_Headers = Get_Response_Headers(Resource_Name)  # Gets Response Headers
+    Resource = Get_Resource(Resource_Name)  # Gets Response Resource
+
+    Message = Response_Line  # Adds Encoded Response Line To Message
+    Message += Encode_Response_Headers(Response_Headers)  # Adds Encoded Response Headers To Message
+    Message += Resource  # Adds Resource to Message
+
+    return Message
+
+
 def Print_Request_Details(Request_Line, Request_Headers):
-    for value in Request_Line:
-        print(value)
-        print(b'\t')
+    """
+    Prints The Request Details in the Console for Debugging Purposes
+    :author: Sam
+    :param Request_Line:
+    :param Request_Headers:
+    :return: N/A
+    """
+    print(Request_Line)
 
     print(b'\r\n')
     for key in Request_Headers:
@@ -97,17 +137,21 @@ def Print_Request_Details(Request_Line, Request_Headers):
         print(b'\r\n')
 
 
+# Helper Functions for Request Line
 def Get_Request_Line(request_socket):
     """
     Reads and returns the the request header as a tuple or array
-    :param request_socket: the socket from which to read the request header from
+    :author: Sam
+    :param request_socket: the Client_Socket from which to read the request header from
     :return: Python Array Containing the information from the RequestHeader
     """
     Next_Byte = next_byte(request_socket)
     RequestHeaderByte = b''
     while Next_Byte != '\r':
-        RequestHeaderByte += next_byte()
+        RequestHeaderByte += next_byte(request_socket)
         Next_Byte = next_byte(request_socket)
+
+    next_byte(request_socket) # Skips "\n"
 
     return Parse_Request_Line()
 
@@ -124,6 +168,93 @@ def Parse_Request_Line(RequestHeaderByte):
     return Request_Header_Values
 
 
+# Helper Functions for Request Headers
+def Get_Request_Headers(Client_Socket):
+    """
+    Reads and Parses all of the headers in the http response
+    :author: Sam
+    :param Client_Socket: The Socket to read the Data From
+    :return: dictionary containing header names and values in pairs
+    """
+    headers = {}
+    (headerLength, rawHeader) = Get_Raw_Header(Client_Socket)
+
+    while headerLength != 0:
+        Header_Name = Get_Header_Name(rawHeader)
+        Header_Value = Get_Header_Value(rawHeader)
+        headers[Header_Name] = Header_Value
+        (headerLength, rawHeader) = Get_Raw_Header(Client_Socket)
+
+    return headers
+
+
+def Get_Raw_Header(Client_Socket):
+    """
+    Reades the Raw Header data and records the length of the header
+    :author: Sam
+    :param Client_Socket: the Client_Socket from which to grab the data
+    :return: (headerLength, header) length of header and the raw data of header
+    """
+    headerLength = 0
+    header = b''
+    currentByte = next_byte(Client_Socket)
+
+    while currentByte != b'\r':
+        header += currentByte
+        headerLength += 1
+        currentByte = next_byte(Client_Socket)
+
+    next_byte(Client_Socket)
+    return headerLength, header
+
+
+def Get_Header_Name(rawHeader):
+    """
+    Gets Header Name From Raw Header Data
+    :Author: Sam
+    :param rawHeader: unparsed header
+    :return: The headers name
+    """
+    headerString = rawHeader.decode('ASCII')
+    return headerString[0:headerString.find(' ')]
+
+
+def Get_Header_Value(rawHeader):
+    """
+    Returns the Value tied to the header name.
+    :Author: Sam
+    :param rawHeader: unparsed header
+    :return: value of the header
+    """
+    headerString = rawHeader.decode('ASCII')
+    return headerString[headerString.find(' '):len(headerString)]
+
+
+# Helper Functions for Response Line
+def Get_Response_Line(Resource_Status):
+    """
+    Creates the status line for the HTTP response.
+    :type Resource_Status: boolean stating if the resource exists or not
+    :author: Leah
+    :return: status line: A bytes object of the status line
+    """
+    status_line = b''
+    version = 'HTTP/1.1'
+    version = version.encode()
+    if Resource_Status == 200:
+        status_code = '200 OK'
+        status_code = status_code.encode()
+    elif Resource_Status == 404:
+        status_code = '404 Not Found'
+        status_code = status_code.encode()
+    elif Resource_Status == 400:
+        status_code = '400 Bad Request'
+        status_code = status_code.encode()
+    status_line = version + b'\x20' + status_code + b'\x0d\x0a'
+    return status_line
+
+
+# Helper Functions for Response Headers
 def Add_Response_Header(header_dictionary, header_name, header_value):
     """
     Adds a header to the dictionary to be sent in a response
@@ -156,77 +287,23 @@ def Encode_Response_Headers(header_dictionary):
     return encoded_dictionary
 
 
-def Get_Request_Headers(socket):
-    """
-    Reads and Parses all of the headers in the http response
-    :author: Sam
-    :param socket: The Socket to read the Data From
-    :return: dictionary containing header names and values in pairs
-    """
-    headers = {}
-    (headerLength, rawHeader) = Get_Raw_Header(socket)
-
-    while headerLength != 0:
-        Header_Name = Get_Header_Name(rawHeader)
-        Header_Value = Get_Header_Value(rawHeader)
-        headers[Header_Name] = Header_Value
-        (headerLength, rawHeader) = Get_Raw_Header(socket)
-
-    return headers
-
-
-def Get_Raw_Header(socket):
-    """
-    Reades the Raw Header data and records the length of the header
-    :author: Sam
-    :param socket:
-    :return: (headerLength, header) length of header and the raw data of header
-    """
-    headerLength = 0
-    header = b''
-    currentByte = next_byte(socket)
-
-    while currentByte != b'\r':
-        header += currentByte
-        headerLength += 1
-        currentByte = next_byte(socket)
-
-    next_byte(socket)
-    return headerLength, header
-
-
-def Get_Header_Name(rawHeader):
-    """
-    Gets Header Name From Raw Header Data
-    :Author: Sam
-    :param rawHeader:
-    :return: The headers name
-    """
-    headerString = rawHeader.decode('ASCII')
-    return headerString[0:headerString.find(' ')]
-
-
-def Get_Header_Value(rawHeader):
-    """
-    Returns the Value tied to the header name.
-    :Author: Sam
-    :param rawHeader:
-    :return:
-    """
-    headerString = rawHeader.decode('ASCII')
-    return headerString[headerString.find(' '):len(headerString)]
-
-
 def Get_Response_Headers(resource):
     """
     Creates a dictionary of the response headers.
+    :param resource: resource being requested from the server
     :authors: Leah and Sam
-    :return:
+    :return: Dictionary containing the headers to send in the response
     """
     header_dictionary = {}
     header_dictionary = Add_Response_Header(header_dictionary, 'Date:', Get_Date())
     header_dictionary = Add_Response_Header(header_dictionary, 'MIME:', get_mime_type(resource))
-    header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', get_file_size(resource))
+    header_dictionary = Add_Response_Header(header_dictionary, 'Connection:', 'close')
+
+    File_Size = get_file_size(resource)
+    if File_Size is not None:
+        header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', str(File_Size))
+    else:
+        header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', '0')
 
     return header_dictionary
 
@@ -242,75 +319,54 @@ def Get_Date():
     return timestamp.strftime('%a, %d %b %Y %H:%M:%S GMT')
 
 
-def Create_Response_Line():
-    """
-    Creates the status line for the HTTP response.
-    :author: Leah
-    :return: status line: A bytes object of the status line
-    """
-    status_line = b''
-    version = 'HTTP/1.1 '
-    version = version.encode()
-    if Find_Resource():
-        status_code = '200 ok '
-        status_code = status_code.encode()
-    else:
-        status_code = '400 not found '
-        status_code = status_code.encode()
-    status_line = version + status_code + b'\x0d\x0a'
-    return status_line
-
-
-def Find_Resource(filename, path):
+def Resource_Exists(filename, path):
     """
     finds a file in the local server via given name and path
     if the file is found, return 200 file found
     if file is not found, return 404 not found status code
     passes file to store_body to return the body
     :param filename: name of the file to find
-    :param: path: path of the file in the directory
+    :param path: path of the file in the directory
     :return: return either 404 not found or 200 if file is found
-
     :author: Joe Bunales
     """
-    for root, dirs, files in os.walk(path):
+    # Traverses the directory tree starting in the same directory as where the python script is
+    for root, dirs, files in os.walk(sys.path[0]):
         if filename in files:
-            Store_Body(filename)
-            return 200
-    return 404
+            return True # Status 200 OK
+    return False        # Status 404 NOT FOUND
 
 
-def Store_Body(file_name):
+# Helper Function for Getting the Resource
+def Get_Resource(filename):
     """
     This method stores the contents of a file to a string to return in the header
     :param filename: name of the file to open and read
-    :param dict: dictionary to store the file contents in
     :return: return the body of a file
-
     :author: Joe Bunales
     """
 
-    body = dict{}
-    with open(file_name, 'r') as contents:
+    body = {}
+    with open(filename, 'r') as contents:
         for line in contents:
-            key, value = line.split()
-            ":"
-            dict[key] = value
+            key, value = line.split(":")
+            body[key] = value
     return body
 
 
+# Helper Function for Getting Data From the Client
 def next_byte(data_socket: object) -> object:
     """
-    Read the next byte from the socket data_socket.
+    Read the next byte from the Client_Socket data_socket.
 
     Read the next byte from the sender, received over the network.
     If the byte has not yet arrived, this method blocks (waits)
       until the byte arrives.
     If the sender is done sending and is waiting for your response, this method blocks indefinitely.
 
-    :param data_socket: The socket to read from. The data_socket argument should be an open tcp
-                        data connection (either a client socket or a server data socket), not a tcp
-                        server's listening socket.
+    :param data_socket: The Client_Socket to read from. The data_socket argument should be an open tcp
+                        data connection (either a client Client_Socket or a server data Client_Socket), not a tcp
+                        server's listening Client_Socket.
     :return: the next byte, as a bytes object with a single byte in it
     """
     return data_socket.recv(1)
