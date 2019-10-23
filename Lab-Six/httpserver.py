@@ -1,7 +1,7 @@
 """
-- CS2911 - 0NN
-- Fall 2017
-- Lab N
+- CS2911 - 031
+- Fall 2019
+- Lab 6
 - Names: Leah Ersoy, Sam Ferguson, Joe Bunales
 
 A simple HTTP server
@@ -198,6 +198,45 @@ def Get_Header_Value(rawHeader):
     """
     headerString = rawHeader.decode('ASCII')
     return headerString[headerString.find(' '):len(headerString)]
+
+
+def find_resource(filename, path):
+    """
+    finds a file in the local server via given name and path
+    if the file is found, return 200 file found
+    if file is not found, return 404 not found status code
+    passes file to store_body to return the body
+    :param filename: name of the file to find
+    :param: path: path of the file in the directory
+    :return: return either 404 not found or 200 if file is found
+
+    :author: Joe Bunales
+    """
+    for root, dirs, files in os.walk(path):
+        if filename in files:
+            store_body(filename)
+            return 200
+    return 404
+
+
+def store_body(file_name):
+    """
+    This method stores the contents of a file to a string to return in the header
+    :param filename: name of the file to open and read
+    :param dict: dictionary to store the file contents in
+    :return: return the body of a file
+
+    :author: Joe Bunales
+    """
+
+    body = dict
+    {}
+    with open(file_name, 'r') as contents:
+        for line in contents:
+            key, value = line.split()
+            ":"
+            dict[key] = value
+    return body
 
 
 def next_byte(data_socket: object) -> object:
