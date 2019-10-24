@@ -63,24 +63,22 @@ def handle_request(request_socket):
     :param request_socket: Client_Socket representing TCP connection from the HTTP client_socket
     :return: None
     """
-    print(request_socket.revc(1000))
-
-    print('Request Found')
 
     Request_Line = Get_Request_Line(request_socket)
 
     Request_Headers = Get_Request_Headers(request_socket)
 
+    print(Request_Line)
     # prints out the request line and headers received.
-    Print_Request_Details(Request_Line, Request_Headers)
+    # Print_Request_Headers(Request_Line, Request_Headers)
 
-    if Request_Headers[2] != 'HTTP/1.1':
+    if Request_Line[2] != 'HTTP/1.1':
         Message = Assemble_Message(Resource_Status=400, Resource_Name='')
         request_socket.sendall(Message)
 
     if Request_Line[0] == 'GET':
-        if Request_Headers[1] == '/':
-            Request_Headers[1] = '/index.html'
+        if Request_Line[1] == '/':
+            Request_Line[1] = '/index.html'
 
         # Handle GET Requests Here
         if Resource_Exists(Request_Line[1]):  # If the Resource Exists
@@ -114,27 +112,22 @@ def Assemble_Message(Resource_Status, Resource_Name):
 
     Message = Response_Line  # Adds Encoded Response Line To Message
     Message += Encode_Response_Headers(Response_Headers)  # Adds Encoded Response Headers To Message
-    Message += Resource  # Adds Resource to Message
+    if Resource_Status < 300:
+        Message += Resource  # Adds Resource to Message
 
     return Message
 
 
-def Print_Request_Details(Request_Line, Request_Headers):
+def Print_Request_Headers(Request_Headers):
     """
     Prints The Request Details in the Console for Debugging Purposes
     :author: Sam
-    :param Request_Line:
     :param Request_Headers:
     :return: N/A
     """
-    print(Request_Line)
 
-    print(b'\r\n')
     for key in Request_Headers:
-        print(key)
-        print(' ')
-        print(Request_Headers[key])
-        print(b'\r\n')
+        print(key + ' ' + Request_Headers[key])
 
 
 # Helper Functions for Request Line
@@ -147,13 +140,13 @@ def Get_Request_Line(request_socket):
     """
     Next_Byte = next_byte(request_socket)
     RequestHeaderByte = b''
-    while Next_Byte != '\r':
-        RequestHeaderByte += next_byte(request_socket)
+    while Next_Byte != b'\r':
+        RequestHeaderByte += Next_Byte
         Next_Byte = next_byte(request_socket)
 
-    next_byte(request_socket) # Skips "\n"
+    next_byte(request_socket)  # Skips "\n"
 
-    return Parse_Request_Line()
+    return Parse_Request_Line(RequestHeaderByte=RequestHeaderByte)
 
 
 def Parse_Request_Line(RequestHeaderByte):
@@ -234,22 +227,17 @@ def Get_Header_Value(rawHeader):
 def Get_Response_Line(Resource_Status):
     """
     Creates the status line for the HTTP response.
-    :type Resource_Status: boolean stating if the resource exists or not
+    :type Resource_Status: integer value of HTTP Status Code
     :author: Leah
     :return: status line: A bytes object of the status line
     """
-    status_line = b''
-    version = 'HTTP/1.1'
-    version = version.encode()
+    version = b'HTTP/1.1'
     if Resource_Status == 200:
-        status_code = '200 OK'
-        status_code = status_code.encode()
+        status_code = b'200 OK'
     elif Resource_Status == 404:
-        status_code = '404 Not Found'
-        status_code = status_code.encode()
+        status_code = b'404 Not Found'
     elif Resource_Status == 400:
-        status_code = '400 Bad Request'
-        status_code = status_code.encode()
+        status_code = b'400 Bad Request'
     status_line = version + b'\x20' + status_code + b'\x0d\x0a'
     return status_line
 
@@ -299,6 +287,7 @@ def Get_Response_Headers(resource):
     header_dictionary = Add_Response_Header(header_dictionary, 'MIME:', get_mime_type(resource))
     header_dictionary = Add_Response_Header(header_dictionary, 'Connection:', 'close')
 
+    resource = '.' + resource
     File_Size = get_file_size(resource)
     if File_Size is not None:
         header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', str(File_Size))
@@ -319,7 +308,7 @@ def Get_Date():
     return timestamp.strftime('%a, %d %b %Y %H:%M:%S GMT')
 
 
-def Resource_Exists(filename, path):
+def Resource_Exists(filename):
     """
     finds a file in the local server via given name and path
     if the file is found, return 200 file found
@@ -330,11 +319,17 @@ def Resource_Exists(filename, path):
     :return: return either 404 not found or 200 if file is found
     :author: Joe Bunales
     """
+    # print(filename)
+    File_Path = '.' + filename[0]
+    # print(File_Path)
+    filename = filename[1:]
+    # print(filename)
     # Traverses the directory tree starting in the same directory as where the python script is
-    for root, dirs, files in os.walk(sys.path[0]):
+    for root, dirs, files in os.walk(File_Path):
         if filename in files:
-            return True # Status 200 OK
-    return False        # Status 404 NOT FOUND
+            # print(True)
+            return True  # Status 200 OK
+    return False         # Status 404 NOT FOUND
 
 
 # Helper Function for Getting the Resource
@@ -345,12 +340,9 @@ def Get_Resource(filename):
     :return: return the body of a file
     :author: Joe Bunales
     """
-
-    body = {}
-    with open(filename, 'r') as contents:
-        for line in contents:
-            key, value = line.split(":")
-            body[key] = value
+    File_Path = '.' + filename
+    with open(File_Path, 'rb') as contents:
+        body = contents.read()
     return body
 
 
