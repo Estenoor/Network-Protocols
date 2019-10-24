@@ -59,7 +59,7 @@ def handle_request(request_socket):
     Closes request Client_Socket after sending response.
 
     Should include a response header indicating NO persistent connection
-
+    :author: Sam
     :param request_socket: Client_Socket representing TCP connection from the HTTP client_socket
     :return: None
     """
