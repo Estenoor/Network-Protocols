@@ -1,11 +1,11 @@
 """
-- CS2911 - 0NN
+- CS2911 - 031
 - Fall 2019
-- Lab N
+- Lab 7
 - Names:
-  -
-  -
-
+  - Joe Bunales
+  - Sam Ferguson
+  - Leah Ersoy
 A Trivial File Transfer Protocol Server
 """
 
@@ -43,6 +43,72 @@ def main():
     ####################################################
 
     client_socket.close()
+
+
+def parse_blocks(file_name):
+    """
+    parses data to a tuple
+    returns a tuple of 512 byte blocks
+    finds and opens resources
+    :param file_name: name of a file requested by a user
+
+    :return: a tuple containing the blocks of data from a file
+
+    author: Joe Bunales
+    """
+    contents = Get_Resource(file_name)
+    block_count = get_file_block_count(file_name)
+    return block_tuple(file_name, block_count)
+
+
+# Helper Function for Getting the Resource
+def Get_Resource(filename):
+    """
+    This method stores the contents of a file to a string to return in the header
+    :param filename: name of the file to open and read
+    :return: return the body of a file
+
+    :author: Joe Bunales
+    """
+    File_Path = '.' + filename
+    with open(File_Path, 'rb') as contents:
+        body = contents.read()
+    return body
+
+
+def block_tuple(filename, block_count):
+    """
+    stores data to a tuple
+    each spot in the tuple is a block of 512 bytes at maximum
+    :param filename: name of a file requested by a user
+    :param block_count: number of blocks of data to send to the user
+    :return: a tuple containing the blocks of data
+
+    author: Joe Bunales
+    """
+    # tuple to return
+    tuple = ()
+    # tuple to add to original tuple
+    # add_tuple()
+    for x in block_count:
+        tuple = get_file_block(filename, block_count)
+    return tuple
+
+
+# Helper Function for Getting Data From the Client
+def next_byte(data_socket: object) -> object:
+    """
+    Read the next byte from the Client_Socket data_socket.
+    Read the next byte from the sender, received over the network.
+    If the byte has not yet arrived, this method blocks (waits)
+      until the byte arrives.
+    If the sender is done sending and is waiting for your response, this method blocks indefinitely.
+    :param data_socket: The Client_Socket to read from. The data_socket argument should be an open tcp
+                        data connection (either a client Client_Socket or a server data Client_Socket), not a tcp
+                        server's listening Client_Socket.
+    :return: the next byte, as a bytes object with a single byte in it
+    """
+    return data_socket.recv(1)
 
 
 def get_file_block_count(filename):
