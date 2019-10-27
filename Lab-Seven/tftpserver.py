@@ -44,6 +44,12 @@ def main():
 
     client_socket.close()
 
+def Processs_Reqest(client_socket):
+	request_message = Read_Request_Method(client_socket)
+	if request_message == 1:
+		# Sending a file
+	else request_message == 2:
+		# Receiving a file
 
 def parse_blocks(file_name):
     """
