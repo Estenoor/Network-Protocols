@@ -35,8 +35,7 @@ def main():
     #   functions as needed                            #
     ####################################################
 
-
-
+    Process_Request(client_socket)
 
     ####################################################
     # Your code ends here                              #
@@ -44,12 +43,44 @@ def main():
 
     client_socket.close()
 
-def Processs_Reqest(client_socket):
-	request_message = Read_Request_Method(client_socket)
-	if request_message == 1:
-		# Sending a file
-	else request_message == 2:
-		# Receiving a file
+
+def Read_Request_Message(client_socket):
+    pass
+
+
+def Process_Reqest(client_socket):
+    request_message = Read_Request_Message(client_socket)
+    if request_message[0] == 1:  # If the Client is Requesting a file to be sent.
+        file_name = request_message[1]
+        block_count = get_file_block_count(file_name)
+        file_blocks = block_tuple(file_name, block_count)
+        count = 0
+        while count < block_count:
+            ack = send_block(block_data=file_blocks[count], block_number=count, client_socket=client_socket)
+            if ack == count: # if the bock number acknowledge is the one sent
+                count += 1
+
+    elif request_message[0] == 2:  # If the Client is Sending a file
+        pass
+
+
+def send_block(block_data, block_number, client_socket):
+    """
+    Sends block of file to client
+    :param block_data: data to be sent
+    :param block_number:
+    :param client_socket:
+    :return: the acknowledgment sent by the client.
+    """
+    message = block_number.to_bytes(length=2, byteorder='big')
+    message += block_data
+    client_socket.sendall(message)
+    return get_acknowledge(client_socket)
+
+
+def get_acknowledge(client_socket):
+    return 0
+
 
 def parse_blocks(file_name):
     """
@@ -140,7 +171,7 @@ def get_file_block(filename, block_number):
     :return: The data contents (as a bytes object) of the file block
     """
     file = open(filename, 'rb')
-    block_byte_offset = (block_number-1) * TFTP_BLOCK_SIZE
+    block_byte_offset = (block_number - 1) * TFTP_BLOCK_SIZE
     file.seek(block_byte_offset)
     block_data = file.read(TFTP_BLOCK_SIZE)
     file.close()
@@ -156,7 +187,7 @@ def put_file_block(filename, block_data, block_number):
     :return: Nothing
     """
     file = open(filename, 'wb')
-    block_byte_offset = (block_number-1) * TFTP_BLOCK_SIZE
+    block_byte_offset = (block_number - 1) * TFTP_BLOCK_SIZE
     file.seek(block_byte_offset)
     file.write(block_data)
     file.close()
