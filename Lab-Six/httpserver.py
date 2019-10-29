@@ -108,11 +108,11 @@ def Assemble_Message(Resource_Status, Resource_Name):
     """
     Response_Line = Get_Response_Line(Resource_Status)  # Gets Response Line
     Response_Headers = Get_Response_Headers(Resource_Name)  # Gets Response Headers
-    Resource = Get_Resource(Resource_Name)  # Gets Response Resource
 
     Message = Response_Line  # Adds Encoded Response Line To Message
     Message += Encode_Response_Headers(Response_Headers)  # Adds Encoded Response Headers To Message
     if Resource_Status < 300:
+        Resource = Get_Resource(Resource_Name)  # Gets Response Resource
         Message += Resource  # Adds Resource to Message
 
     return Message
@@ -284,13 +284,13 @@ def Get_Response_Headers(resource):
     """
     header_dictionary = {}
     header_dictionary = Add_Response_Header(header_dictionary, 'Date:', Get_Date())
-    header_dictionary = Add_Response_Header(header_dictionary, 'MIME:', get_mime_type(resource))
     header_dictionary = Add_Response_Header(header_dictionary, 'Connection:', 'close')
 
     resource = '.' + resource
     File_Size = get_file_size(resource)
     if File_Size is not None:
         header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', str(File_Size))
+        header_dictionary = Add_Response_Header(header_dictionary, 'MIME:', get_mime_type(resource))
     else:
         header_dictionary = Add_Response_Header(header_dictionary, 'Content-Length:', '0')
 
