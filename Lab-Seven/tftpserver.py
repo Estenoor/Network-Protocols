@@ -45,7 +45,33 @@ def main():
 
 
 def Read_Request_Message(client_socket):
-    pass
+    """
+    Parses through the read request by the client and returns
+    the information from the read request as a tuple bytes object.
+    :author Leah
+    :param client_socket:
+    :return: tuple of the read request as bytes objects: op_code, filename, mode
+    """
+    #reads in the op code from the message
+    op_code = next_byte(client_socket) + next_byte(client_socket)
+
+    filename = b''
+    counter1 = b''
+    #continues to read the message until it reaches 00
+    #this is the filename
+    while counter1 != '\x00':
+        filename += counter1
+        counter1 = next_byte(client_socket)
+    counter2 = b''
+    mode = b''
+    #continues to read the message until it reaches 00
+    #this is the mode
+    while counter2 != '\x00':
+        mode += counter2
+        counter2 = next_byte(client_socket)
+    #returns the important information from the read request
+    return op_code, filename, mode
+
 
 
 def Process_Reqest(client_socket):
