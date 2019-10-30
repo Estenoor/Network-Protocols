@@ -71,6 +71,21 @@ def Read_Request_Message(client_socket):
         counter2 = next_byte(client_socket)
     #returns the important information from the read request
     return op_code, filename, mode
+  
+  
+  
+ def Read_Acknowledge(client_socket):
+    """
+    Goes through the acknowledge message and returns the
+    block_number as an int
+    author: Leah
+    :param client_socket:
+    :return: block_number: an int representing what block has been received
+    """
+    op_code = next_byte(client_socket) + next_byte(client_socket)
+    block_number = next_byte(client_socket) + next_byte(client_socket)
+    block_number = int(block_number.decode('ASCII'))
+    return block_number 
 
 
 
