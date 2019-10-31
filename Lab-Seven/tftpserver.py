@@ -74,7 +74,7 @@ def Read_Request_Message(client_socket):
         counter2, requestPacket = next_byte(requestPacket)
     # returns the important information from the read request
     return (op_code, filename.decode('ASCII'), mode.decode('ASCII')), requestAddr
-  
+
 
 def Read_Acknowledge(client_socket):
     """
@@ -103,9 +103,9 @@ def Process_Request(client_socket):
         count = 0
         while count < block_count:
             ack, request_addr = send_block(block_data=file_blocks[count],
-                             block_number=count + 1,
-                             client_socket=client_socket,
-                             client_addr=request_addr)
+                                           block_number=count + 1,
+                                           client_socket=client_socket,
+                                           client_addr=request_addr)
             if ack == (count + 1):  # if the bock number acknowledge is the one sent
                 count += 1
 
@@ -175,8 +175,8 @@ def block_tuple(filename, block_count):
     tuple = list()
     # tuple to add to original tuple
     # add_tuple()
-    for x in range(0, block_count):
-        tuple.append(get_file_block(filename, block_count))
+    for x in range(1, block_count + 1):
+        tuple.append(get_file_block(filename, x))
     return tuple
 
 
