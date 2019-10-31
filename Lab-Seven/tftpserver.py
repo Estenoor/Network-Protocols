@@ -52,26 +52,26 @@ def Read_Request_Message(client_socket):
     :param client_socket:
     :return: tuple of the read request as bytes objects: op_code, filename, mode
     """
-    requestPacket = read_packet(client_socket)
-    # reads in the op code from the message
-    op_code = int.from_Bytes(next_byte(requestPacket) + next_byte(requestPacket), 'big')
-
+    requestPacket, requestAddr = read_packet(client_socket)
+    op_code_1, requestPacket = next_byte(requestPacket)
+    op_code_2, requestPacket = next_byte(requestPacket)
+    op_code = int.from_bytes(op_code_1 + op_code_2, 'big')
     filename = b''
     counter1 = b''
     # continues to read the message until it reaches 00
     # this is the filename
     while counter1 != b'\x00':
         filename = filename + counter1
-        counter1 = next_byte(requestPacket)
+        counter1, requestPacket = next_byte(requestPacket)
     counter2 = b''
     mode = b''
     # continues to read the message until it reaches 00
     # this is the mode
     while counter2 != b'\x00':
         mode += counter2
-        counter2 = next_byte(requestPacket)
+        counter2, requestPacket = next_byte(requestPacket)
     # returns the important information from the read request
-    return op_code, filename.encode(), mode.encode()
+    return (op_code, filename.decode('ASCII'), mode.decode('ASCII')), requestAddr
   
 
 def Read_Acknowledge(client_socket):
@@ -83,21 +83,26 @@ def Read_Acknowledge(client_socket):
     :return: block_number: an int representing what block has been received
     """
     acknowledge_packet = read_packet(client_socket)
-    op_code = next_byte(acknowledge_packet) + next_byte(acknowledge_packet)
+    op_code_1, acknowledge_packet = next_byte(acknowledge_packet)
+    op_code_2, acknowledge_packet = next_byte(acknowledge_packet)
+    op_code = int.from_bytes(op_code_1 + op_code_2, 'big')
     block_number = next_byte(acknowledge_packet) + next_byte(acknowledge_packet)
     block_number = int(block_number.decode('ASCII'))
     return block_number
 
 
 def Process_Request(client_socket):
-    request_message = Read_Request_Message(client_socket)
+    request_message, request_addr = Read_Request_Message(client_socket)
     if request_message[0] == 1:  # If the Client is Requesting a file to be sent.
-        file_name = request_message[1]
+        file_name = './' + request_message[1]
         block_count = get_file_block_count(file_name)
         file_blocks = block_tuple(file_name, block_count)
         count = 0
         while count < block_count:
-            ack = send_block(block_data=file_blocks[count], block_number=count, client_socket=client_socket)
+            ack = send_block(block_data=file_blocks[count],
+                             block_number=count,
+                             client_socket=client_socket,
+                             client_addr=request_addr)
             if ack == count: # if the bock number acknowledge is the one sent
                 count += 1
 
@@ -105,17 +110,19 @@ def Process_Request(client_socket):
         pass
 
 
-def send_block(block_data, block_number, client_socket):
+def send_block(block_data, block_number, client_socket, client_addr):
     """
     Sends block of file to client
+    :param client_addr: address of the client
     :param block_data: data to be sent
-    :param block_number:
-    :param client_socket:
+    :param block_number: number of block being send
+    :param client_socket: socket to send information on
     :return: the acknowledgment sent by the client.
     """
     message = block_number.to_bytes(length=2, byteorder='big')
-    message += block_data
-    client_socket.sendall(message)
+    # print(type(block_data))
+    message += block_data.to_bytes((block_data.bit_length() + 7) // 8, 'big')
+    client_socket.sendto(message, client_addr)
     return Read_Acknowledge(client_socket)
 
 
@@ -164,7 +171,7 @@ def block_tuple(filename, block_count):
     tuple = ()
     # tuple to add to original tuple
     # add_tuple()
-    for x in block_count:
+    for x in range(0, block_count):
         tuple = get_file_block(filename, block_count)
     return tuple
 
@@ -172,18 +179,28 @@ def block_tuple(filename, block_count):
 # Helper Functions for Reading Packets from Network
 def next_byte(packet):
     """
+    :author: Sam
     :param packet:
     :return:
     """
+    # print(packet)
     packet = bytearray(packet)
-    byte = packet[0]
+    byte = packet[0].to_bytes(1, 'big')
     del packet[0]
-    return byte
+    return byte, packet
 
 
 def read_packet(client_socket):
-    packet = client_socket.recvfrom(MAX_UDP_PACKET_SIZE)[0]
-    return packet
+    """
+    :author: Sam
+    :param client_socket:
+    :return:
+    """
+    packet = client_socket.recvfrom(MAX_UDP_PACKET_SIZE)
+    # print(packet)
+    # print(packet[0])
+    # print(packet[1])
+    return packet[0], packet[1]
 
 
 def get_file_block_count(filename):
