@@ -52,29 +52,29 @@ def Read_Request_Message(client_socket):
     :param client_socket:
     :return: tuple of the read request as bytes objects: op_code, filename, mode
     """
-    #reads in the op code from the message
-    op_code = next_byte(client_socket) + next_byte(client_socket)
+    requestPacket = read_packet(client_socket)
+    # reads in the op code from the message
+    op_code = int.from_Bytes(next_byte(requestPacket) + next_byte(requestPacket), 'big')
 
     filename = b''
     counter1 = b''
-    #continues to read the message until it reaches 00
-    #this is the filename
-    while counter1 != '\x00':
-        filename += counter1
-        counter1 = next_byte(client_socket)
+    # continues to read the message until it reaches 00
+    # this is the filename
+    while counter1 != b'\x00':
+        filename = filename + counter1
+        counter1 = next_byte(requestPacket)
     counter2 = b''
     mode = b''
-    #continues to read the message until it reaches 00
-    #this is the mode
-    while counter2 != '\x00':
+    # continues to read the message until it reaches 00
+    # this is the mode
+    while counter2 != b'\x00':
         mode += counter2
-        counter2 = next_byte(client_socket)
-    #returns the important information from the read request
-    return op_code, filename, mode
+        counter2 = next_byte(requestPacket)
+    # returns the important information from the read request
+    return op_code, filename.encode(), mode.encode()
   
-  
-  
- def Read_Acknowledge(client_socket):
+
+def Read_Acknowledge(client_socket):
     """
     Goes through the acknowledge message and returns the
     block_number as an int
@@ -82,14 +82,14 @@ def Read_Request_Message(client_socket):
     :param client_socket:
     :return: block_number: an int representing what block has been received
     """
-    op_code = next_byte(client_socket) + next_byte(client_socket)
-    block_number = next_byte(client_socket) + next_byte(client_socket)
+    acknowledge_packet = read_packet(client_socket)
+    op_code = next_byte(acknowledge_packet) + next_byte(acknowledge_packet)
+    block_number = next_byte(acknowledge_packet) + next_byte(acknowledge_packet)
     block_number = int(block_number.decode('ASCII'))
-    return block_number 
+    return block_number
 
 
-
-def Process_Reqest(client_socket):
+def Process_Request(client_socket):
     request_message = Read_Request_Message(client_socket)
     if request_message[0] == 1:  # If the Client is Requesting a file to be sent.
         file_name = request_message[1]
@@ -116,11 +116,7 @@ def send_block(block_data, block_number, client_socket):
     message = block_number.to_bytes(length=2, byteorder='big')
     message += block_data
     client_socket.sendall(message)
-    return get_acknowledge(client_socket)
-
-
-def get_acknowledge(client_socket):
-    return 0
+    return Read_Acknowledge(client_socket)
 
 
 def parse_blocks(file_name):
@@ -173,20 +169,21 @@ def block_tuple(filename, block_count):
     return tuple
 
 
-# Helper Function for Getting Data From the Client
-def next_byte(data_socket: object) -> object:
+# Helper Functions for Reading Packets from Network
+def next_byte(packet):
     """
-    Read the next byte from the Client_Socket data_socket.
-    Read the next byte from the sender, received over the network.
-    If the byte has not yet arrived, this method blocks (waits)
-      until the byte arrives.
-    If the sender is done sending and is waiting for your response, this method blocks indefinitely.
-    :param data_socket: The Client_Socket to read from. The data_socket argument should be an open tcp
-                        data connection (either a client Client_Socket or a server data Client_Socket), not a tcp
-                        server's listening Client_Socket.
-    :return: the next byte, as a bytes object with a single byte in it
+    :param packet:
+    :return:
     """
-    return data_socket.recv(1)
+    packet = bytearray(packet)
+    byte = packet[0]
+    del packet[0]
+    return byte
+
+
+def read_packet(client_socket):
+    packet = client_socket.recvfrom(MAX_UDP_PACKET_SIZE)[0]
+    return packet
 
 
 def get_file_block_count(filename):
