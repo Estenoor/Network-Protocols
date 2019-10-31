@@ -15,6 +15,8 @@ import os
 import math
 
 # Helpful constants used by TFTP
+import time
+
 TFTP_PORT = 69
 TFTP_BLOCK_SIZE = 512
 MAX_UDP_PACKET_SIZE = 65536
@@ -82,13 +84,14 @@ def Read_Acknowledge(client_socket):
     :param client_socket:
     :return: block_number: an int representing what block has been received
     """
-    acknowledge_packet = read_packet(client_socket)
+    acknowledge_packet, acknowledge_addr = read_packet(client_socket)
     op_code_1, acknowledge_packet = next_byte(acknowledge_packet)
     op_code_2, acknowledge_packet = next_byte(acknowledge_packet)
     op_code = int.from_bytes(op_code_1 + op_code_2, 'big')
-    block_number = next_byte(acknowledge_packet) + next_byte(acknowledge_packet)
-    block_number = int(block_number.decode('ASCII'))
-    return block_number
+    block_number_1, acknowledge_packet = next_byte(acknowledge_packet)
+    block_number_2, acknowledge_packet = next_byte(acknowledge_packet)
+    block_number = int.from_bytes(block_number_1 + block_number_2, 'big')
+    return block_number, acknowledge_addr
 
 
 def Process_Request(client_socket):
@@ -99,7 +102,7 @@ def Process_Request(client_socket):
         file_blocks = block_tuple(file_name, block_count)
         count = 0
         while count < block_count:
-            ack = send_block(block_data=file_blocks[count],
+            ack, request_addr = send_block(block_data=file_blocks[count],
                              block_number=count,
                              client_socket=client_socket,
                              client_addr=request_addr)
@@ -196,7 +199,9 @@ def read_packet(client_socket):
     :param client_socket:
     :return:
     """
+
     packet = client_socket.recvfrom(MAX_UDP_PACKET_SIZE)
+    time.sleep(3)
     # print(packet)
     # print(packet[0])
     # print(packet[1])
