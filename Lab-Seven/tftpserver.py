@@ -103,10 +103,10 @@ def Process_Request(client_socket):
         count = 0
         while count < block_count:
             ack, request_addr = send_block(block_data=file_blocks[count],
-                             block_number=count,
+                             block_number=count + 1,
                              client_socket=client_socket,
                              client_addr=request_addr)
-            if ack == count: # if the bock number acknowledge is the one sent
+            if ack == (count + 1):  # if the bock number acknowledge is the one sent
                 count += 1
 
     elif request_message[0] == 2:  # If the Client is Sending a file
@@ -122,9 +122,10 @@ def send_block(block_data, block_number, client_socket, client_addr):
     :param client_socket: socket to send information on
     :return: the acknowledgment sent by the client.
     """
-    message = block_number.to_bytes(length=2, byteorder='big')
+    message = b'\x00\x03'
+    message += block_number.to_bytes(length=2, byteorder='big')
     # print(type(block_data))
-    message += block_data.to_bytes((block_data.bit_length() + 7) // 8, 'big')
+    message += block_data
     client_socket.sendto(message, client_addr)
     return Read_Acknowledge(client_socket)
 
@@ -171,11 +172,11 @@ def block_tuple(filename, block_count):
     author: Joe Bunales
     """
     # tuple to return
-    tuple = ()
+    tuple = list()
     # tuple to add to original tuple
     # add_tuple()
     for x in range(0, block_count):
-        tuple = get_file_block(filename, block_count)
+        tuple.append(get_file_block(filename, block_count))
     return tuple
 
 
@@ -201,7 +202,6 @@ def read_packet(client_socket):
     """
 
     packet = client_socket.recvfrom(MAX_UDP_PACKET_SIZE)
-    time.sleep(3)
     # print(packet)
     # print(packet[0])
     # print(packet[1])
