@@ -216,6 +216,66 @@ def create_keys():
 
     pass  # Delete this line and complete this method
 
+
+
+def get_modulus(key_p, key_q):
+    """
+    Takes in the p and q values and returns the modulus, n.
+    :author: Leah
+    :param key_p:
+    :param key_q:
+    :return: modulus
+    """
+    modulus = key_p * key_q
+    return modulus
+
+
+
+def get_keys(public_exponent):
+    """
+    Chooses a random number between the MAX_PRIME and the MIN_PRIME then continues to add 2
+    to this random number until the number is prime and (the number - 1)%e != 0
+    :author: Leah 
+    :param public_exponent:
+    :return: p, q
+    """
+    max = int.from_bytes(MAX_PRIME, 'big')
+    min = int.from_bytes(MIN_PRIME, 'big')
+    p_found = False
+    test_p = random.randint(min, max)
+    while (p_found != True):
+        for x in range(2, math.sqrt(test_p)):
+            test = test_p % x
+            if(test == 0):
+                break
+            p_found = True
+        if(p_found):
+            if((test_p-1)%public_exponent == 0):
+                p_found = False
+            else:
+                p = test_p
+        test_p = test_p + 2
+
+    q_found = False
+    test_q = random.randint(min, max)
+    while (q_found != True):
+        for x in range(2, math.sqrt(test_q)):
+            test = test_q % x
+            if (test == 0):
+                break
+            q_found = True
+        if (q_found):
+            if ((test_q - 1) % public_exponent == 0):
+                q_found = False
+            else:
+                q = test_q
+        test_q = test_q + 2
+    p = p.to_bytes(4, 'big')
+    q = q.to_bytes(4, 'big')
+    return p, q
+
+
+
 def get_public_exponent(public_exponent, totient):
     totient = get_totient(p, q)
     public_exponent := 0
