@@ -216,6 +216,28 @@ def create_keys():
 
     pass  # Delete this line and complete this method
 
+def get_public_exponent(public_exponent, totient):
+    totient = get_totient(p, q)
+    public_exponent := 0
+    r := n
+    newt := 1
+    newr := a
+    while newr ≠ 0
+    quotient := r
+    div
+    newr
+    (public_exponent, newt) := (newt, public_exponent - quotient * newt)
+    (r, newr) := (newr, r - quotient * newr)
+
+    if r > 1 then return "a is not invertible"
+    if t < 0 then public_exponent := public_exponent + totient
+
+
+return public_exponent
+
+
+def get_totient(key_p, key_q):
+    return (key_p - 1) * (key_q - 1)
 
 def apply_key(key, m):
     """
