@@ -223,14 +223,14 @@ def apply_key(key, m):
 
     This can be used both for encryption and decryption.
 
+    :author: Sam
     :param tuple key: (e,n) or (d,n)
     :param int m: the message as a number 1 < m < n (roughly)
     :return: the message with the key applied. For example,
              if given the public key and a message, encrypts the message
              and returns the ciphertext.
     """
-
-    pass  # Delete this line and complete this method
+    return (m**key[0]) % key[1]
 
 
 def break_key(pub):
