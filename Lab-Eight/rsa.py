@@ -6,7 +6,7 @@
 
 16-bit RSA
 """
-
+import math
 import random
 import sys
 
@@ -110,7 +110,7 @@ def encrypt_message_interactive():
     print("Encrypted message:", encrypted)
 
 
-def decrypt_message_interactive(priv = None):
+def decrypt_message_interactive(priv=None):
     """
     Decrypt a message
     """
@@ -209,13 +209,16 @@ def compute_checksum(string):
 
 def create_keys():
     """
+    :author: Sam and Leah
     Create the public and private keys.
 
     :return: the keys as a three-tuple: (e,d,n)
     """
-
-    pass  # Delete this line and complete this method
-
+    (p, q) = get_keys(PUBLIC_EXPONENT)
+    modulus = get_modulus(p, q)
+    totient = get_totient(p, q)
+    private_exponent = get_private_exponent(PUBLIC_EXPONENT, totient)
+    return PUBLIC_EXPONENT, private_exponent, modulus
 
 
 def get_modulus(key_p, key_q):
@@ -230,7 +233,6 @@ def get_modulus(key_p, key_q):
     return modulus
 
 
-
 def get_keys(public_exponent):
     """
     Chooses a random number between the MAX_PRIME and the MIN_PRIME then continues to add 2
@@ -239,65 +241,98 @@ def get_keys(public_exponent):
     :param public_exponent:
     :return: p, q
     """
-    max = int.from_bytes(MAX_PRIME, 'big')
-    min = int.from_bytes(MIN_PRIME, 'big')
-    p_found = False
-    test_p = random.randint(min, max)
-    while (p_found != True):
-        for x in range(2, math.sqrt(test_p)):
-            test = test_p % x
-            if(test == 0):
-                break
-            p_found = True
-        if(p_found):
-            if((test_p-1)%public_exponent == 0):
-                p_found = False
-            else:
-                p = test_p
-        test_p = test_p + 2
+    p = get_prime_number()
+    q = get_prime_number()
+    while p == q:
+        q = get_prime_number()
 
-    q_found = False
-    test_q = random.randint(min, max)
-    while (q_found != True):
-        for x in range(2, math.sqrt(test_q)):
-            test = test_q % x
-            if (test == 0):
-                break
-            q_found = True
-        if (q_found):
-            if ((test_q - 1) % public_exponent == 0):
-                q_found = False
-            else:
-                q = test_q
-        test_q = test_q + 2
-    p = p.to_bytes(4, 'big')
-    q = q.to_bytes(4, 'big')
     return p, q
 
 
+def get_prime_number():
+    """
+    :author: leah
+    gets a prime number that is also co-prime with the public_exponent
+    :return: 
+    """
+    test_number = random.randint(MIN_PRIME, MAX_PRIME)
+    if test_number % 2 == 0:
+        test_number += 1
 
-def get_public_exponent(public_exponent, totient):
-    totient = get_totient(p, q)
-    public_exponent := 0
-    r := n
-    newt := 1
-    newr := a
-    while newr ≠ 0
-    quotient := r
-    div
-    newr
-    (public_exponent, newt) := (newt, public_exponent - quotient * newt)
-    (r, newr) := (newr, r - quotient * newr)
+    while True:
+        if not is_prime(test_number):
+            test_number += 2
 
-    if r > 1 then return "a is not invertible"
-    if t < 0 then public_exponent := public_exponent + totient
+        else:
+            if not is_coprime(test_number, PUBLIC_EXPONENT):
+                test_number += 2
+
+        return test_number
 
 
-return public_exponent
+def is_prime(number):
+    """
+    :author: sam
+    Checks if the number is prime
+    :param number: number to check
+    :return: true if number is prime, false if not
+    """
+    for x in range(2, int(math.sqrt(number)) + 1):
+        remainder = number % x
+        if remainder != 0:
+            return True
+    return False
+
+
+def is_coprime(x, y):
+    """
+    checks if x is coprime with y
+    :author: Sam
+    :param x:
+    :param y:
+    :return: true if x is coprime with y or false if not
+    """
+    if (x - 1) % y != 0:
+        return True
+
+    return False
+
+
+def get_private_exponent(public_exponent, totient):
+    """
+    get private exponent for private key
+    :author: Joe
+    :param public_exponent:
+    :param totient:
+    :return:
+    """
+    t = 0
+    r = totient
+    newt = 1
+    newr = public_exponent
+    while newr != 0:
+        quotient = r // newr
+        (t, newt) = (newt, t - quotient * newt)
+        (r, newr) = (newr, r - quotient * newr)
+
+    if r > 1:
+        return "a is not invertible"
+    if t < 0:
+        t = t + totient
+    return t
+
+    return public_exponent
 
 
 def get_totient(key_p, key_q):
+    """
+    :author: Joe
+    :param key_p:
+    :param key_q:
+    :return:
+    """
     return (key_p - 1) * (key_q - 1)
+
 
 def apply_key(key, m):
     """
@@ -312,7 +347,7 @@ def apply_key(key, m):
              if given the public key and a message, encrypts the message
              and returns the ciphertext.
     """
-    return (m**key[0]) % key[1]
+    return (m ** key[0]) % key[1]
 
 
 def break_key(pub):
@@ -322,7 +357,7 @@ def break_key(pub):
 
     You can follow the steps in the "optional" part of the in-class
     exercise.
-
+    :author: Joe, Leah, Sam
     :param pub: a tuple containing the public key (e,n)
     :return: a tuple containing the private key (d,n)
     """
