@@ -217,6 +217,7 @@ def create_keys():
     (p, q) = get_keys(PUBLIC_EXPONENT)
     modulus = get_modulus(p, q)
     totient = get_totient(p, q)
+    print(p, q)
     private_exponent = get_private_exponent(PUBLIC_EXPONENT, totient)
     return PUBLIC_EXPONENT, private_exponent, modulus
 
@@ -277,11 +278,12 @@ def is_prime(number):
     :param number: number to check
     :return: true if number is prime, false if not
     """
-    for x in range(2, int(math.sqrt(number)) + 1):
+    for x in range(3, number):
         remainder = number % x
-        if remainder != 0:
-            return True
-    return False
+        if remainder == 0:
+            return False
+
+    return True
 
 
 def is_coprime(x, y):
@@ -292,9 +294,8 @@ def is_coprime(x, y):
     :param y:
     :return: true if x is coprime with y or false if not
     """
-    if (x - 1) % y != 0:
+    if (x) % y != 0:
         return True
-
     return False
 
 
@@ -361,7 +362,76 @@ def break_key(pub):
     :param pub: a tuple containing the public key (e,n)
     :return: a tuple containing the private key (d,n)
     """
-    pass  # Delete this line and complete this method
+    key_broken = False
+    message = 'test'
+    # while not key_broken:
+    (p, q) = factor_number(pub[1])
+    totient = get_totient(p, q)
+    private_exponent = get_private_exponent(pub[0], totient)
+    private_key = private_exponent, pub[1]
+
+    return private_exponent, pub[1]
+
+
+def factor_number(number):
+    """
+    :author: Joe
+    :param number:
+    :return:
+    """
+    sqrt = int(math.sqrt(number)) + 1
+    for x in reversed(range(0, sqrt)):
+        if number % x == 0:
+            return x, number // x
+
+    return 0, 0
+
+
+def mass_break_test():
+    """
+    function to mass test the break key function instead of running and manually testing the function repeatedly
+    :return:
+    """
+    for i in range(0, 1000):
+        key_set = create_keys()
+        print(get_private_key(key_set))
+        private_key = break_key(get_public_key(key_set))
+        print(private_key)
+        if private_key == get_private_key(key_set):
+            print('True')
+
+        else:
+            print('False')
+
+
+def test_key_creation():
+    for x in range(0, 100):
+        test_messages = {'Hello', 'Hello World!', 'Life, Death, and the Universe'}
+        key_set = create_keys()
+        for message in test_messages:
+
+            pub = get_public_key(key_set)
+            encrypted = ''
+            for c in message:
+                encrypted += "{0:04x}".format(apply_key(pub, ord(c)))
+
+            priv = get_private_key(key_set)
+            decrypted = ''
+            for i in range(0, len(encrypted), 4):
+                enc_string = encrypted[i:i + 4]
+                enc = int(enc_string, 16)
+                print(priv[0])
+                print(type(enc), type(priv[0]))
+                dec = apply_key(priv, enc)
+                if dec >= 0 and dec < 256:
+                    decrypted += chr(dec)
+
+            if message == decrypted:
+                print(key_set, '----', ' Message: ', message, 'Decrypted Message: ', decrypted, ' Result: True')
+            else:
+                print(key_set, '----', ' Message: ', message, 'Decrypted Message: ', decrypted, ' Result: False')
+
+        print('----------------------------')
 
 
 # Your code and additional functions go here. (Replace this line.)
@@ -395,4 +465,8 @@ def get_private_key(key_pair):
     return (key_pair[1], key_pair[2])
 
 
-main()
+# main()
+
+# test_key_creation()
+
+mass_break_test()
