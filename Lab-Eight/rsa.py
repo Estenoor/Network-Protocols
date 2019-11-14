@@ -294,7 +294,6 @@ def is_coprime(x, y):
     """
     if (x - 1) % y != 0:
         return True
-
     return False
 
 
@@ -361,8 +360,61 @@ def break_key(pub):
     :param pub: a tuple containing the public key (e,n)
     :return: a tuple containing the private key (d,n)
     """
-    pass  # Delete this line and complete this method
+    key_broken = False
+    message = 'test'
+    # while not key_broken:
+    (p, q) = factor_number(pub[1])
+    totient = get_totient(p, q)
+    private_exponent = get_private_exponent(pub[0], totient)
+    private_key = private_exponent, pub[1]
 
+        # encrypted = ''
+        # for c in message:
+        #     encrypted += "{0:04x}".format(apply_key(pub, ord(c)))
+        #
+        # decrypted_message = ''
+        # for i in range(0, len(encrypted), 4):
+        #     enc_string = encrypted[i:i + 4]
+        #     enc = int(enc_string, 16)
+        #     dec = apply_key(private_key, enc)
+        #     if 0 <= dec < 256:
+        #         decrypted_message += chr(dec)
+        #
+        # if decrypted_message == message:
+        #     key_broken = True
+
+    return private_exponent, pub[1]
+
+
+def factor_number(number):
+    """
+    :author: Joe
+    :param number:
+    :return:
+    """
+    sqrt = int(math.sqrt(number)) + 1
+    for x in reversed(range(0, sqrt)):
+        if number % x == 0:
+            return x, number // x
+
+    return 0, 0
+
+
+def mass_break_test():
+    """
+    function to mass test the break key function instead of running and manually testing the function repeatedly
+    :return:
+    """
+    for i in range(0, 1000):
+        key_set = create_keys()
+        print(get_private_key(key_set))
+        private_key = break_key(get_public_key(key_set))
+        print(private_key)
+        if private_key == get_private_key(key_set):
+            print('True')
+
+        else:
+            print('False')
 
 # Your code and additional functions go here. (Replace this line.)
 
@@ -396,3 +448,5 @@ def get_private_key(key_pair):
 
 
 main()
+
+# mass_break_test()
